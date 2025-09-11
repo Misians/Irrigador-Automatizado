@@ -1,38 +1,255 @@
-.App {
+/* General Body Styles */
+body {
+  margin: 0;
+  font-family: 'Inter', sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: #f0f2f5; /* Um cinza claro e suave para o fundo */
+  color: #333;
+  line-height: 1.6;
+}
+
+/* --- Reusable Container Styles --- */
+.container {
+  max-width: 900px; /* Aumentei a largura máxima para mais espaço */
+  margin: 40px auto;
+  padding: 30px;
+  border-radius: 15px; /* Bordas mais arredondadas */
+  background-color: #ffffff;
+  box-shadow: 0 10px 30px rgba(0, 0, 0, 0.08); /* Sombra mais pronunciada e suave */
+  border: none; /* Remove a borda para um look mais limpo */
+  animation: fadeIn 0.8s ease-out; /* Animação de fade-in ao carregar */
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* --- Reusable Heading Styles --- */
+.heading {
+  text-align: center;
+  color: #2c3e50;
+  margin-bottom: 30px;
+  font-size: 2.2em; /* Fonte um pouco maior */
+  font-weight: 700; /* Mais negrito */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 15px; /* Mais espaço entre ícone e texto */
+  padding-bottom: 10px;
+  border-bottom: 2px solid #e0e0e0; /* Linha de sublinhado sutil */
+}
+
+.heading::before,
+.heading::after {
+  content: '';
+  flex-grow: 1;
+  height: 1px;
+  background-color: #e0e0e0;
+  margin: 0 10px;
+}
+
+/* --- Reusable Message Styles --- */
+.message {
+  margin-top: 25px;
+  padding: 15px 20px; /* Mais padding */
+  border-radius: 10px; /* Bordas mais arredondadas */
+  font-weight: 600; /* Mais negrito */
+  text-align: center;
+  transition: all 0.3s ease; /* Transição para as mensagens */
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 10px;
+}
+
+.message-success {
+  background-color: #d4edda; /* Verde mais suave */
+  color: #155724; /* Verde mais escuro */
+  border: 1px solid #c3e6cb;
+}
+
+.message-error {
+  background-color: #f8d7da; /* Vermelho mais suave */
+  color: #721c24; /* Vermelho mais escuro */
+  border: 1px solid #f5c6cb;
+}
+
+.message-loading {
+  background-color: #d1ecf1; /* Azul claro mais suave */
+  color: #0c5460; /* Azul mais escuro */
+  border: 1px solid #bee5eb;
+}
+
+.message-no-data {
+  background-color: #fff3cd; /* Amarelo mais suave */
+  color: #856404; /* Amarelo mais escuro */
+  border: 1px solid #ffeeba;
+}
+
+/* --- AdicionarLeituraSolo Specific Styles --- */
+.adicionar-leitura-container {
+  max-width: 600px; /* Ajustei um pouco a largura */
   text-align: center;
 }
 
-.App-logo {
-  height: 40vmin;
-  pointer-events: none;
+.adicionar-leitura-info {
+  color: #666;
+  font-size: 1.15em; /* Ligeiramente maior */
+  margin-bottom: 30px;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-  .App-logo {
-    animation: App-logo-spin infinite 20s linear;
-  }
+.last-reading-container {
+  margin-top: 35px; /* Mais espaço */
+  padding: 25px; /* Mais padding */
+  background-color: #e8f5e9; /* Um verde bem suave para a última leitura */
+  border-radius: 12px;
+  border: 1px solid #d0e0d0;
+  text-align: left;
+  box-shadow: 0 5px 15px rgba(0, 0, 0, 0.07);
 }
 
-.App-header {
-  background-color: #282c34;
-  min-height: 100vh;
+.last-reading-title {
+  color: #388e3c; /* Verde mais escuro */
+  font-size: 1.3em;
+  margin-bottom: 18px;
+  font-weight: bold;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.last-reading-item {
+  margin-bottom: 10px; /* Mais espaço entre os itens */
+  color: #444;
+  font-size: 1.05em;
+}
+
+.last-reading-label {
+  font-weight: 700; /* Mais negrito */
+  color: #222;
+}
+
+.last-reading-id {
+  color: #777;
+  font-size: 0.88em;
+  margin-top: 15px;
+  display: block; /* Para garantir que o ID fica numa linha separada */
+}
+
+/* --- GraficosLeituraSolo Specific Styles --- */
+.graficos-container {
+  max-width: 1000px; /* Mais espaço para os gráficos */
+}
+
+.chart-container {
+  margin-bottom: 40px;
+  padding: 25px; /* Mais padding */
+  background-color: #fdfdfd; /* Fundo quase branco */
+  border-radius: 12px;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.06);
+  border: 1px solid #eee;
+}
+
+.chart-title {
+  text-align: center;
+  color: #34495e;
+  font-size: 1.5em; /* Título maior */
+  margin-bottom: 25px;
+  font-weight: bold;
+  position: relative;
+}
+
+.chart-title::after {
+  content: '';
+  position: absolute;
+  bottom: -10px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 60px;
+  height: 3px;
+  background-color: #8884d8; /* Cor da linha para combinar com os gráficos */
+  border-radius: 2px;
+}
+
+/* Cores das linhas dos gráficos - já definidas nos componentes, mas bom ter em mente */
+/* Umidade: #28a745 (verde) */
+/* pH: #007bff (azul) */
+/* Temperatura: #dc3545 (vermelho) */
+
+/* --- ListarLeiturasSolo Specific Styles --- */
+.listar-leituras-container {
+  max-width: 900px;
+}
+
+.leituras-list {
+  list-style: none;
+  padding: 0;
+  display: grid;
+  gap: 25px; /* Mais espaço entre os cards */
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); /* Ajuste no min-width */
+}
+
+.leitura-item {
+  background-color: #ffffff; /* Fundo branco para os itens da lista */
+  border: 1px solid #e5e5e5;
+  border-radius: 12px;
+  padding: 25px; /* Mais padding */
+  box-shadow: 0 6px 18px rgba(0, 0, 0, 0.08); /* Sombra mais visível */
+  transition: transform 0.3s ease, box-shadow 0.3s ease; /* Transição mais suave */
   display: flex;
   flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  font-size: calc(10px + 2vmin);
-  color: white;
+  justify-content: space-between;
+  position: relative; /* Para o elemento pseudo */
+  overflow: hidden; /* Garante que o pseudo-elemento não vaze */
 }
 
-.App-link {
-  color: #61dafb;
+.leitura-item::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 100%;
+  height: 5px; /* Linha colorida no topo do card */
+  background: linear-gradient(90deg, #6dd5ed 0%, #2193b0 100%); /* Gradiente azul divertido */
+  transition: height 0.3s ease-out;
 }
 
-@keyframes App-logo-spin {
-  from {
-    transform: rotate(0deg);
-  }
-  to {
-    transform: rotate(360deg);
-  }
+.leitura-item:hover {
+  transform: translateY(-8px); /* Levanta mais ao passar o mouse */
+  box-shadow: 0 12px 25px rgba(0, 0, 0, 0.15); /* Sombra mais intensa no hover */
+}
+
+.leitura-item:hover::before {
+  height: 8px; /* Aumenta a linha no topo no hover */
+}
+
+.item-title {
+  font-weight: 700; /* Mais negrito */
+  color: #34495e;
+  font-size: 1.15em;
+  margin-bottom: 10px;
+  border-bottom: 1px dashed #e0e0e0; /* Linha tracejada para separar o título */
+  padding-bottom: 5px;
+}
+
+.item-value {
+  margin-bottom: 8px;
+  color: #555;
+  font-size: 1em;
+}
+
+.item-id {
+  font-size: 0.85em;
+  color: #888;
+  margin-top: 15px;
+  word-break: break-all;
+  text-align: right; /* Alinha o ID à direita */
 }
