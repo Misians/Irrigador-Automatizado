@@ -1,43 +1,377 @@
 <!DOCTYPE html>
-<html lang="en">
-  <head>
-    <meta charset="utf-8" />
-    <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#000000" />
-    <meta
-      name="description"
-      content="Web site created using create-react-app"
-    />
-    <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
-    <!--
-      manifest.json provides metadata used when your web app is installed on a
-      user's mobile device or desktop. See https://developers.google.com/web/fundamentals/web-app-manifest/
-    -->
-    <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
-    <!--
-      Notice the use of %PUBLIC_URL% in the tags above.
-      It will be replaced with the URL of the `public` folder during the build.
-      Only files inside the `public` folder can be referenced from the HTML.
+<html lang="pt-BR">
 
-      Unlike "/favicon.ico" or "favicon.ico", "%PUBLIC_URL%/favicon.ico" will
-      work correctly both with client-side routing and a non-root public URL.
-      Learn how to configure a non-root public URL by running `npm run build`.
-    -->
-    <title>React App</title>
-  </head>
-  <body>
-    <noscript>You need to enable JavaScript to run this app.</noscript>
-    <div id="root"></div>
-    <!--
-      This HTML file is a template.
-      If you open it directly in the browser, you will see an empty page.
 
-      You can add webfonts, meta tags, or analytics to this file.
-      The build step will place the bundled scripts into the <body> tag.
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard Irrigador Automatizado</title>
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js"></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js"></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-color-start: #f9fdfa; --bg-color-end: #f1f5f9;
+      --text-color-primary: #1f2937; --text-color-secondary: #4b5563;
+      --card-bg-color: #ffffff;
+      --card-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+      --card-border: 1px solid rgba(0, 0, 0, 0.08); /* Borda visível no modo claro */
+      --header-text-color: #096849;
+      --glow-effect: none;
+    }
 
-      To begin the development, run `npm start` or `yarn start`.
-      To create a production bundle, use `npm run build` or `yarn build`.
-    -->
-  </body>
+
+    .dark {
+      --bg-color-start: #1f2937; --bg-color-end: #111827;
+      --text-color-primary: #f3f4f6; --text-color-secondary: #9ca3af;
+      --card-bg-color: rgba(31, 41, 55, 0.5);
+      --card-shadow: none;
+      --card-border: 1px solid rgba(255, 255, 255, 0.1); /* Borda visível no modo escuro */
+      --header-text-color: #ffffff;
+      --glow-effect: 0 0 12px rgba(52, 211, 153, 0.4);
+    }
+
+
+    body {
+      background: linear-gradient(to bottom right, var(--bg-color-start), var(--bg-color-end));
+      color: var(--text-color-primary);
+      font-family: 'Inter', sans-serif;
+      transition: background 0.5s ease-in-out, color 0.5s ease-in-out;
+    }
+   
+    @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+    @keyframes slideInUp { from { transform: translateY(20px); opacity: 0; } to { transform: translateY(0); } }
+    @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+    @keyframes wobble { 0%, 100% { transform: translateX(0%); } 15% { transform: translateX(-5px) rotate(-5deg); } 30% { transform: translateX(3px) rotate(3deg); } 45% { transform: translateX(-2px) rotate(-2deg); } 60% { transform: translateX(1px) rotate(1deg); } 75% { transform: translateX(-1px) rotate(0deg); } }
+    @keyframes shake { 0%, 100% { transform: translateX(0); } 10%, 30%, 50%, 70%, 90% { transform: translateX(-3px); } 20%, 40%, 60%, 80% { transform: translateX(3px); } }
+    @keyframes blow { 0%, 100% { transform: scale(1) translateX(0); } 50% { transform: scale(1.1) translateX(5px); } }
+    @keyframes pulse-glow { 0%, 100% { filter: drop-shadow(0 0 6px currentColor); } 50% { filter: drop-shadow(0 0 12px currentColor); } }
+
+
+    .fade-in { animation: fadeIn 0.8s ease-in-out forwards; }
+    .slide-in-up { animation: slideInUp 0.8s ease-in-out forwards; }
+    .sun-icon { animation: spin 10s linear infinite; }
+    .interactive-icon:hover { animation: wobble 1s ease-in-out; }
+    .interactive-icon.temp:hover { animation: shake 0.82s cubic-bezier(.36,.07,.19,.97) both; }
+    .interactive-icon.wind:hover { animation: blow 1.5s ease-in-out infinite; }
+    .interactive-icon.valve:hover { animation: pulse-glow 1s ease-in-out infinite; }
+  </style>
+</head>
+
+
+<body class="p-8 min-h-screen">
+  <div id="root"></div>
+
+
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
+
+
+    const hoverLinePlugin = {
+      id: 'hoverLine',
+      afterDraw: chart => {
+        if (chart.tooltip?._active?.length) {
+          const activePoint = chart.tooltip._active[0];
+          const ctx = chart.ctx;
+          const x = activePoint.element.x;
+          const topY = chart.scales.y.top;
+          const bottomY = chart.scales.y.bottom;
+          ctx.save();
+          ctx.beginPath();
+          ctx.moveTo(x, topY);
+          ctx.lineTo(x, bottomY);
+          ctx.lineWidth = 2;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.5)';
+          ctx.setLineDash([5, 5]);
+          ctx.stroke();
+          ctx.restore();
+        }
+      }
+    };
+    Chart.register(hoverLinePlugin);
+
+
+    const useCountUp = (end, duration = 1500) => {
+        const [count, setCount] = useState(0);
+        useEffect(() => {
+            let frame = 0;
+            const frameRate = 1000 / 60;
+            const totalFrames = Math.round(duration / frameRate);
+            const counter = setInterval(() => {
+                frame++;
+                const progress = frame / totalFrames;
+                setCount(end * progress);
+                if (frame === totalFrames) { clearInterval(counter); setCount(end); }
+            }, frameRate);
+            return () => clearInterval(counter);
+        }, [end, duration]);
+        return count;
+    };
+
+
+    const generateTheoreticalData = () => {
+      const data = [];
+      let umidadeSolo = 85, temperatura = 27, umidadeAr = 79;
+      const baseTime = new Date().getTime();
+      const interval = 2 * 60 * 1000;
+      for (let i = 60; i >= 0; i--) {
+        const timestamp = baseTime - (i * interval);
+        let estaChovendo = false, statusValvula = 'fechada';
+        umidadeSolo = Math.max(0, umidadeSolo - Math.random() * 0.4 - 0.05);
+        temperatura += (Math.random() - 0.5) * 0.3;
+        temperatura = Math.max(26, Math.min(29, temperatura));
+        umidadeAr += -( (Math.random() - 0.5) * 0.3) * 1.2 + (Math.random() - 0.5) * 0.5;
+        umidadeAr = Math.max(75, Math.min(85, umidadeAr));
+        if (i > 10 && i < 20 && Math.random() < 0.05) { estaChovendo = true; umidadeSolo = 95 + Math.random() * 5; statusValvula = 'fechada'; }
+        if (umidadeSolo < 50 && !estaChovendo) { statusValvula = 'aberta'; umidadeSolo += Math.random() * 2 + 1.5; }
+        data.push({ timestamp, umidadedosolo: umidadeSolo, temperatura, umidadeDoAr: umidadeAr, estaChovendo, statusValvula });
+      }
+      return data.sort((a, b) => a.timestamp - b.timestamp);
+    };
+
+
+    const AnimatedNumber = ({ value, unit }) => {
+        const count = useCountUp(value);
+        return <p className="text-5xl font-bold mt-2" style={{color: 'var(--text-color-primary)'}}>{count.toFixed(1)}{unit}</p>;
+    };
+
+
+    const ChartComponent = ({ data, label, chartId, colors, isDarkMode }) => {
+      useEffect(() => {
+        const labels = data.map(item => new Date(item.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }));
+        const values = data.map(item => item[label]);
+        const ctx = document.getElementById(chartId).getContext('2d');
+        const borderGradient = ctx.createLinearGradient(0, 0, 0, 320);
+        borderGradient.addColorStop(0, colors[0]);
+        borderGradient.addColorStop(1, colors[1]);
+        const backgroundGradient = ctx.createLinearGradient(0, 0, 0, 320);
+        backgroundGradient.addColorStop(0, `${colors[0]}4D`);
+        backgroundGradient.addColorStop(1, `${colors[1]}00`);
+
+
+        const chartConfig = {
+          type: 'line', data: { labels, datasets: [{
+              label, data: values, borderColor: borderGradient, backgroundColor: backgroundGradient, fill: true, tension: 0.4, borderWidth: 3,
+              pointRadius: 3, pointBackgroundColor: isDarkMode ? '#1f2937' : '#ffffff', pointBorderColor: colors[0], pointBorderWidth: 2, pointHoverRadius: 6, pointHoverBackgroundColor: colors[0], pointHoverBorderColor: '#ffffff',
+            }],
+          },
+          options: {
+            responsive: true, maintainAspectRatio: false,
+            scales: {
+              y: { beginAtZero: false, title: { display: false }, grid: { color: isDarkMode ? 'rgba(255, 255, 255, 0.1)' : 'rgba(0, 0, 0, 0.1)' }, ticks: { color: isDarkMode ? '#9ca3af' : '#4b5563' } },
+              x: { title: { display: false }, grid: { display: false }, ticks: { color: isDarkMode ? '#9ca3af' : '#4b5563' } }
+            },
+            plugins: {
+              legend: { display: false },
+              tooltip: { mode: 'index', intersect: false, backgroundColor: 'rgba(0, 0, 0, 0.8)', titleFont: { size: 16, weight: 'bold' }, bodyFont: { size: 14 }, padding: 12, cornerRadius: 8 }
+            }
+          }
+        };
+        const existingChart = Chart.getChart(chartId);
+        if (existingChart) existingChart.destroy();
+        new Chart(ctx, chartConfig);
+      }, [data, label, chartId, colors, isDarkMode]);
+      return <div className="relative w-full h-80"><canvas id={chartId}></canvas></div>;
+    };
+   
+    const AgendaCard = ({ horario, condicao, umidadeAtual }) => {
+      const umidadeLimite = parseFloat(condicao.match(/< (\d+)/)[1]);
+      const devePular = umidadeAtual > umidadeLimite;
+      const cardClasses = "p-4 rounded-lg flex items-center justify-between transition-colors duration-500";
+      const lightModeClass = devePular ? 'bg-gray-100' : 'bg-green-50';
+      const darkModeClass = 'dark:bg-gray-800/50 ' + (devePular ? 'dark:bg-opacity-50' : 'dark:bg-green-500/10');
+      const iconClasses = `fas fa-clock text-2xl mr-4 transition-colors duration-500 ${devePular ? 'text-gray-400' : 'text-green-600 dark:text-green-400'}`;
+
+
+      return (
+        <div className={`${cardClasses} ${lightModeClass} ${darkModeClass}`}>
+          <div className="flex items-center">
+            <i className={iconClasses}></i>
+            <div>
+              <p className="font-bold text-lg" style={{color: 'var(--text-color-primary)'}}>{horario}</p>
+              <p className="text-sm" style={{color: 'var(--text-color-secondary)'}}>{condicao}</p>
+            </div>
+          </div>
+          {devePular ? (
+             <div className="text-right">
+                <p className="font-bold text-yellow-600 dark:text-yellow-400">PULADO</p>
+                <p className="text-xs" style={{color: 'var(--text-color-secondary)'}}>Solo já está úmido</p>
+             </div>
+          ) : (
+             <div className="text-right">
+                <p className="font-bold text-green-700 dark:text-green-400">ATIVO</p>
+                <p className="text-xs" style={{color: 'var(--text-color-secondary)'}}>Irrigação programada</p>
+             </div>
+          )}
+        </div>
+      );
+    };
+
+
+    const WeatherWidget = ({ leitura }) => {
+        const temp = leitura?.temperatura || 0;
+        const weather = temp > 27 ? { icon: "fas fa-sun sun-icon", text: "Ensolarado", color: "yellow-400" } : { icon: "fas fa-cloud-sun", text: "Parcialmente Nublado", color: "gray-300" };
+        return (
+            <div className="p-6 rounded-2xl flex items-center justify-between mb-12 slide-in-up transition-all duration-500" style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '100ms', backdropFilter: 'blur(10px)'}}>
+                <div>
+                    <p className="text-lg" style={{color: 'var(--text-color-secondary)'}}>Clima Atual em Natal/RN</p>
+                    <p className="text-5xl font-bold" style={{color: 'var(--text-color-primary)'}}>{temp.toFixed(1)}°C</p>
+                    <p className={`font-semibold text-${weather.color}`}>{weather.text}</p>
+                </div>
+                <i className={`${weather.icon} text-8xl text-${weather.color}`} style={{filter: 'drop-shadow(0 0 6px currentColor)'}}></i>
+            </div>
+        );
+    };
+
+
+    const App = () => {
+      const [ultimaLeitura, setUltimaLeitura] = useState(null);
+      const [leituras, setLeituras] = useState([]);
+      const [loading, setLoading] = useState(true);
+      const [isDarkMode, setIsDarkMode] = useState(true);
+
+
+      const toggleTheme = () => setIsDarkMode(prevMode => !prevMode);
+
+
+      useEffect(() => {
+          if (isDarkMode) { document.body.classList.add('dark'); }
+          else { document.body.classList.remove('dark'); }
+      }, [isDarkMode]);
+
+
+      useEffect(() => {
+        const todasLeituras = generateTheoreticalData();
+        const leiturasOrdenadas = [...todasLeituras].sort((a, b) => b.timestamp - a.timestamp);
+        const ultimas15Leituras = leiturasOrdenadas.slice(0, 15);
+        setLeituras(ultimas15Leituras.sort((a, b) => a.timestamp - b.timestamp));
+        setUltimaLeitura(leiturasOrdenadas[0]);
+        setLoading(false);
+      }, []);
+
+
+      const cardStyle = "p-6 rounded-2xl text-center flex flex-col items-center justify-center transition-all duration-500";
+      const tableHeaderStyle = "p-4 text-left text-xs font-medium uppercase tracking-wider";
+      const tableCellStyle = "p-4 whitespace-nowrap text-sm";
+      const sectionStyle = "mb-12 p-6 rounded-2xl slide-in-up transition-all duration-500";
+
+
+      return (
+        <div className="max-w-7xl mx-auto px-4 fade-in relative">
+          <button onClick={toggleTheme} className="absolute top-0 right-0 p-4 rounded-full text-2xl transition-transform duration-300 hover:scale-110" style={{color: 'var(--text-color-secondary)'}}>
+            <i className={`fas ${isDarkMode ? 'fa-sun text-yellow-400' : 'fa-moon text-indigo-500'}`}></i>
+          </button>
+         
+          <header className="text-center mb-12 pt-8">
+            <h1 className="text-5xl font-extrabold flex items-center justify-center transition-all duration-500" style={{color: 'var(--header-text-color)', textShadow: 'var(--glow-effect)'}}>
+              <i className="fas fa-seedling text-green-600 dark:text-green-400 mr-4 text-6xl"></i>Dashboard Irrigador
+            </h1>
+            <p className="text-lg mt-4" style={{color: 'var(--text-color-secondary)'}}>Monitoramento em tempo real do seu sistema de irrigação.</p>
+          </header>
+
+
+          {loading ? ( <div className="text-center py-16" style={{color: 'var(--text-color-secondary)'}}>Carregando dados...</div> ) : (
+            <>
+              <WeatherWidget leitura={ultimaLeitura} />
+              <section className="mb-12 slide-in-up" style={{animationDelay: '200ms'}}>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+                  <div className={cardStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)'}}>
+                    <i className="fas fa-water text-5xl mb-4 text-blue-500 dark:text-blue-400 interactive-icon" style={{filter: 'drop-shadow(0 0 6px currentColor)'}}></i>
+                    <h3 className="text-sm font-semibold" style={{color: 'var(--text-color-secondary)'}}>Umidade do Solo</h3>
+                    <AnimatedNumber value={ultimaLeitura?.umidadedosolo || 0} unit="%"/>
+                  </div>
+                  <div className={cardStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)'}}>
+                    <i className="fas fa-thermometer-half text-5xl mb-4 text-red-500 dark:text-red-400 interactive-icon temp" style={{filter: 'drop-shadow(0 0 6px currentColor)'}}></i>
+                    <h3 className="text-sm font-semibold" style={{color: 'var(--text-color-secondary)'}}>Temperatura</h3>
+                    <AnimatedNumber value={ultimaLeitura?.temperatura || 0} unit="°C"/>
+                  </div>
+                   <div className={cardStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)'}}>
+                    <i className="fas fa-wind text-5xl mb-4 text-cyan-500 dark:text-cyan-400 interactive-icon wind" style={{filter: 'drop-shadow(0 0 6px currentColor)'}}></i>
+                    <h3 className="text-sm font-semibold" style={{color: 'var(--text-color-secondary)'}}>Umidade do Ar</h3>
+                    <AnimatedNumber value={ultimaLeitura?.umidadeDoAr || 0} unit="%"/>
+                  </div>
+                  <div className={cardStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)'}}>
+                    <i className="fas fa-tint text-5xl mb-4 text-green-500 dark:text-green-400 interactive-icon valve" style={{filter: 'drop-shadow(0 0 6px currentColor)'}}></i>
+                    <h3 className="text-sm font-semibold" style={{color: 'var(--text-color-secondary)'}}>Status Válvula</h3>
+                    <p className={`text-4xl font-bold mt-2 transition-colors ${ultimaLeitura?.statusValvula === 'aberta' ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-gray-500'}`}>
+                      {ultimaLeitura?.statusValvula === 'aberta' ? "ABERTA" : "FECHADA"}
+                    </p>
+                  </div>
+                </div>
+              </section>
+
+
+              <section className={sectionStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '300ms'}}>
+                <h2 className="text-3xl font-bold mb-6 text-center" style={{color: 'var(--text-color-primary)'}}>Agenda de Irrigação</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 max-w-2xl mx-auto">
+                  {["06:00", "17:00"].map(horario => <AgendaCard key={horario} horario={horario} condicao="Umid. Solo < 65%" umidadeAtual={ultimaLeitura?.umidadedosolo || 0} /> )}
+                </div>
+              </section>
+
+
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <section className={sectionStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '400ms'}}>
+                    <h2 className="text-2xl font-bold mb-4 text-center" style={{color: 'var(--text-color-primary)'}}>Umidade do Solo (%)</h2>
+                    <ChartComponent data={leituras} label="umidadedosolo" chartId="umidadeSoloChart" colors={['#60a5fa', '#3b82f6']} isDarkMode={isDarkMode} />
+                </section>
+                <section className={sectionStyle} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '500ms'}}>
+                    <h2 className="text-2xl font-bold mb-4 text-center" style={{color: 'var(--text-color-primary)'}}>Temperatura (°C)</h2>
+                    <ChartComponent data={leituras} label="temperatura" chartId="temperaturaChart" colors={['#facc15', '#f97316']} isDarkMode={isDarkMode} />
+                </section>
+                 <section className={`${sectionStyle} lg:col-span-2`} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '600ms'}}>
+                    <h2 className="text-2xl font-bold mb-4 text-center" style={{color: 'var(--text-color-primary)'}}>Umidade do Ar (%)</h2>
+                    <ChartComponent data={leituras} label="umidadeDoAr" chartId="umidadeArChart" colors={['#f472b6', '#c084fc']} isDarkMode={isDarkMode} />
+                </section>
+              </div>
+             
+              <section className={`${sectionStyle} mt-8`} style={{backgroundColor: 'var(--card-bg-color)', boxShadow: 'var(--card-shadow)', border: 'var(--card-border)', animationDelay: '700ms'}}>
+                <h2 className="text-3xl font-bold mb-6 text-center" style={{color: 'var(--text-color-primary)'}}>Histórico de Leituras</h2>
+                <div className="overflow-x-auto">
+                  <table className="min-w-full">
+                    <thead className="border-b" style={{borderColor: isDarkMode ? 'rgba(156, 163, 175, 0.3)' : 'rgba(0, 0, 0, 0.1)'}}>
+                        <tr>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Timestamp</th>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Umidade Solo (%)</th>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Temp. (°C)</th>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Umidade Ar (%)</th>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Chuva</th>
+                            <th className={tableHeaderStyle} style={{color: 'var(--text-color-secondary)'}}>Válvula</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                      {leituras.sort((a, b) => b.timestamp - a.timestamp).map((leitura, index) => (
+                        <tr key={index} className="border-b hover:bg-gray-500/10" style={{borderColor: isDarkMode ? 'rgba(156, 163, 175, 0.1)' : 'rgba(0, 0, 0, 0.05)'}}>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{new Date(leitura.timestamp).toLocaleString()}</td>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{leitura.umidadedosolo?.toFixed(1) || 'N/A'}</td>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{leitura.temperatura?.toFixed(1) || 'N/A'}</td>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{leitura.umidadeDoAr?.toFixed(1) || 'N/A'}</td>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{leitura.estaChovendo ? 'Sim' : 'Não'}</td>
+                            <td className={tableCellStyle} style={{color: 'var(--text-color-primary)'}}>{leitura.statusValvula}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </section>
+            </>
+          )}
+          <footer className="mt-12 text-center text-sm" style={{color: 'var(--text-color-secondary)'}}>Desenvolvido com React e Firebase.</footer>
+        </div>
+      );
+    };
+
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
 </html>
+
+
+
