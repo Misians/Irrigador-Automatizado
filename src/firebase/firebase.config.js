@@ -2,11 +2,7 @@
 // src/firebase/firebaseConfig.js
 import { initializeApp } from "firebase/app";
 import { getDatabase } from "firebase/database";
-// TODO: Add SDKs for Firebase products that you want to use
-// https://firebase.google.com/docs/web/setup#available-libraries
 
-// Your web app's Firebase configuration
-// For Firebase JS SDK v7.20.0 and later, measurementId is optional
 const firebaseConfig = {
   apiKey: "AIzaSyDX_HY7J29Ol1lodVhTz_TlUU0JxwO2IMc",
   authDomain: "irrigador-automatizado-web.firebaseapp.com",
