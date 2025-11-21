@@ -2,54 +2,395 @@
 import { useState, useEffect } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth';
-// Usando os imports corretos do Realtime Database (RTDB)
-import { getDatabase, ref, query as rtdbQuery, orderByChild, onValue } from 'firebase/database';
+
+// IMPORTAÇÕES CRÍTICAS: Usando Realtime Database (RTDB)
+import { 
+  getDatabase, 
+  ref, 
+  query as dbQuery, // Renomeado para evitar conflito com 'query' global, mas será substituído por 'dbQuery'
+  orderByChild, 
+  limitToLast, 
+  onValue,
+} from 'firebase/database';
+
 // Importando o Recharts
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+
+// Componente de Estilos (CSS embutido)
+const AppStyles = () => (
+  <style>{`
+    /* Reset básico e estilos do Body */
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    /* Animação de pulso para o loading */
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    /* Container principal da aplicação */
+    .app-container {
+      min-height: 100vh;
+      background-color: #f1f5f9; /* bg-slate-100 */
+      padding: 1.5rem; /* p-6 */
+      font-family: sans-serif;
+      color: #0f172a; /* text-slate-900 */
+    }
+
+    /* Conteúdo centralizado */
+    .main-content {
+      max-width: 80rem; /* max-w-7xl */
+      margin-left: auto;
+      margin-right: auto;
+    }
+
+    /* Cabeçalho */
+    .header {
+      margin-bottom: 2.5rem; /* mb-10 */
+    }
+
+    .header-title-container {
+      display: flex;
+      align-items: center;
+      margin-bottom: 0.5rem; /* mb-2 */
+    }
+
+    .header-title {
+      font-size: 1.875rem; /* text-3xl */
+      font-weight: 700; /* font-bold */
+      color: #1e293b; /* text-slate-800 */
+    }
+
+    .header-subtitle {
+      font-size: 1.125rem; /* text-lg */
+      color: #64748b; /* text-slate-500 */
+    }
+
+    .header-info {
+      margin-top: 1rem; /* mt-4 */
+      display: flex;
+      flex-wrap: wrap;
+      gap: 0.5rem 1.5rem; /* gap-y-2 gap-x-6 */
+      font-size: 0.875rem; /* text-sm */
+      color: #475569; /* text-slate-600 */
+      border-top: 1px solid #e2e8f0; /* border-t border-slate-200 */
+      padding-top: 1rem; /* pt-4 */
+    }
+
+    .info-label {
+      font-weight: 600; /* font-semibold */
+      color: #334155; /* text-slate-700 */
+    }
+
+    .user-id-info {
+      font-size: 0.75rem; /* text-xs */
+      color: #94a3b8; /* text-slate-400 */
+      align-self: center; /* self-center */
+    }
+
+    /* Seções */
+    .current-data-section {
+      margin-bottom: 2.5rem; /* mb-10 */
+    }
+
+    .section-header {
+      display: flex;
+      align-items: center;
+      margin-bottom: 1.25rem; /* mb-5 */
+    }
+
+    .section-title {
+      font-size: 1.5rem; /* text-2xl */
+      font-weight: 600; /* font-semibold */
+      color: #334155; /* text-slate-700 */
+    }
+
+    /* Grid de Cards */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
+      gap: 1.25rem; /* gap-5 */
+    }
+
+    .loading-message {
+      grid-column: 1 / -1; /* col-span-full */
+      text-align: center; /* text-center */
+      font-size: 1.125rem; /* text-lg */
+      color: #94a3b8; /* text-slate-400 */
+      animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite; /* animate-pulse */
+      padding-top: 2.5rem; /* py-10 */
+      padding-bottom: 2.5rem; /* py-10 */
+    }
+
+    .error-message {
+      grid-column: 1 / -1;
+      text-align: center;
+      font-size: 1.125rem;
+      color: #94a3b8;
+      padding-top: 2.5rem;
+      padding-bottom: 2.5rem;
+    }
+
+    /* Cards individuais */
+    .card {
+      background-color: #ffffff; /* bg-white */
+      border-radius: 0.75rem; /* rounded-xl */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* shadow-lg */
+      padding: 1.25rem; /* p-5 */
+      border: 1px solid #e2e8f0; /* border border-slate-200 */
+      transition: box-shadow 0.3s ease; /* transition-shadow duration-300 */
+    }
+
+    .card:hover {
+      box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -4px rgba(0, 0, 0, 0.1); /* hover:shadow-md */
+    }
+
+    .card-title {
+      font-size: 0.75rem; /* text-sm */
+      font-weight: 500; /* font-medium */
+      color: #64748b; /* text-slate-500 */
+      text-transform: uppercase; /* uppercase */
+      letter-spacing: 0.05em; /* tracking-wide */
+      margin-bottom: 0.5rem; /* mb-2 */
+    }
+
+    .card-value {
+      font-size: 1.875rem; /* text-3xl */
+      font-weight: 700; /* font-bold */
+    }
+
+    .card-value.green { color: #059669; } /* text-green-700 */
+    .card-value.red { color: #b91c1c; } /* text-red-700 */
+    .card-value.sky { color: #0369a1; } /* text-sky-700 */
+    .card-value.indigo { color: #4338ca; } /* text-indigo-700 */
+    .card-value.blue { color: #2563eb; } /* text-blue-600 */
+    .card-value.slate { color: #334155; } /* text-slate-700 */
+
+    .card-subtitle {
+      font-size: 0.75rem; /* text-xs */
+      color: #94a3b8; /* text-slate-400 */
+      margin-top: 0.5rem; /* mt-2 */
+    }
+
+    /* Layout principal (Gráficos e Histórico) */
+    .main-layout {
+      display: grid;
+      grid-template-columns: repeat(1, minmax(0, 1fr)); /* grid-cols-1 */
+      gap: 2rem; /* gap-8 */
+    }
+
+    .charts-column {
+      /* Ocupa 2 colunas em telas grandes */
+    }
+
+    .chart-container {
+      background-color: #ffffff; /* bg-white */
+      border-radius: 0.75rem; /* rounded-xl */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* shadow-lg */
+      padding: 1.5rem; /* p-6 */
+      border: 1px solid #e2e8f0; /* border border-slate-200 */
+    }
+
+    .chart-title {
+      font-size: 1.5rem; /* text-2xl */
+      font-weight: 600; /* font-semibold */
+      color: #334155; /* text-slate-700 */
+      margin-bottom: 1.5rem; /* mb-6 */
+    }
+
+    .chart-subtitle {
+      font-size: 1.125rem; /* text-lg */
+      font-weight: 600; /* font-semibold */
+      color: #475569; /* text-slate-600 */
+      margin-bottom: 0.75rem; /* mb-3 */
+    }
+
+    .chart-subtitle.second {
+      margin-top: 2rem; /* mt-8 */
+    }
+
+    .history-column {
+      /* Ocupa 1 coluna em telas grandes */
+    }
+
+    .history-container {
+      background-color: #ffffff; /* bg-white */
+      border-radius: 0.75rem; /* rounded-xl */
+      box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -2px rgba(0, 0, 0, 0.1); /* shadow-lg */
+      border: 1px solid #e2e8f0; /* border border-slate-200 */
+      height: 100%; /* h-full */
+      display: flex; /* flex */
+      flex-direction: column; /* flex-col */
+    }
+
+    .history-header {
+      display: flex;
+      align-items: center;
+      padding: 1.5rem; /* p-6 */
+      border-bottom: 1px solid #e2e8f0; /* border-b border-slate-200 */
+    }
+
+    .history-table-container {
+      overflow-y: auto; /* overflow-y-auto */
+      flex: 1 1 0%; /* flex-1 */
+      max-height: 720px;
+    }
+
+    .history-table {
+      min-width: 100%; /* min-w-full */
+      border-collapse: collapse; /* divide-y divide-slate-200 (simulado com bordas) */
+    }
+
+    .history-table thead {
+      background-color: #f8fafc; /* bg-slate-50 */
+      position: sticky; /* sticky */
+      top: 0; /* top-0 */
+      z-index: 10; /* z-10 */
+    }
+
+    .history-table th {
+      padding: 0.75rem 1rem; /* px-4 py-3 */
+      text-align: left; /* text-left */
+      font-size: 0.75rem; /* text-xs */
+      font-weight: 500; /* font-medium */
+      color: #64748b; /* text-slate-500 */
+      text-transform: uppercase; /* uppercase */
+      letter-spacing: 0.05em; /* tracking-wider */
+      border-bottom: 1px solid #e2e8f0;
+    }
+
+    .history-table tbody {
+      background-color: #ffffff; /* bg-white */
+    }
+
+    .history-table tr {
+      border-bottom: 1px solid #e2e8f0; /* divide-y divide-slate-200 */
+      transition: background-color 0.2s; /* transition-colors */
+    }
+
+    .history-table tr:hover {
+      background-color: #f8fafc; /* hover:bg-slate-50 */
+    }
+
+    .history-table td {
+      padding: 1rem 1rem; /* px-4 py-4 */
+      white-space: nowrap; /* whitespace-nowrap */
+      font-size: 0.875rem; /* text-sm */
+      color: #334155; /* text-slate-700 */
+    }
+
+    .history-table td.font-medium {
+      font-weight: 500; /* font-medium */
+    }
+
+    .status-open {
+      font-weight: 500;
+      color: #2563eb; /* text-blue-600 */
+    }
+
+    .status-closed {
+      color: #475569; /* text-slate-600 */
+    }
+
+    .table-message {
+      text-align: center;
+      color: #94a3b8;
+      padding: 2.5rem;
+    }
+
+
+    /* Rodapé */
+    .footer {
+      text-align: center; /* text-center */
+      margin-top: 2.5rem; /* mt-10 */
+      color: #94a3b8; /* text-slate-400 */
+      font-size: 0.875rem; /* text-sm */
+    }
+
+    /* --- Media Queries (Responsividade) --- */
+
+    /* Telas pequenas (sm) */
+    @media (min-width: 640px) {
+      .app-container {
+        padding: 2.5rem; /* sm:p-10 */
+      }
+      
+      .header-title {
+        font-size: 2.25rem; /* sm:text-4xl */
+      }
+      
+      .cards-grid {
+        grid-template-columns: repeat(2, minmax(0, 1fr)); /* sm:grid-cols-2 */
+      }
+    }
+
+    /* Telas médias (lg) */
+    @media (min-width: 1024px) {
+      .cards-grid {
+        grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
+      }
+      
+      .main-layout {
+        grid-template-columns: repeat(3, minmax(0, 1fr)); /* lg:grid-cols-3 */
+      }
+      
+      .charts-column {
+        grid-column: span 2 / span 2; /* lg:col-span-2 */
+      }
+      
+      .history-column {
+        grid-column: span 1 / span 1; /* lg:col-span-1 */
+      }
+    }
+
+    /* Telas extra-grandes (xl) */
+    @media (min-width: 1280px) {
+      .cards-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr)); /* xl:grid-cols-5 */
+      }
+    }
+  `}</style>
+);
+
 
 // Componente principal da página do Dashboard
 export default function App() {
   // Estado da aplicação
   const [loading, setLoading] = useState(true);
   const [ultimaLeitura, setUltimaLeitura] = useState(null);
-  const [leituras, setLeituras] = useState([]);
+  const [leituras, setLeituras] = useState([]); // Array para gráficos e histórico
 
   // Variáveis de estado do Firebase
-  const [db, setDb] = useState(null);
+  const [db, setDb] = useState(null); // 'db' agora será a instância do Realtime Database
   const [auth, setAuth] = useState(null);
   const [userId, setUserId] = useState(null);
 
   // Efeito para inicializar o Firebase e autenticar o usuário
   useEffect(() => {
     
-    // --- INÍCIO DA ADIÇÃO: Carrega o Tailwind CSS ---
-    // Este script injeta o Tailwind CDN no <head> do documento
-    const tailwindScript = document.createElement('script');
-    tailwindScript.src = "https://cdn.tailwindcss.com";
-    tailwindScript.async = true;
-    document.head.appendChild(tailwindScript);
-    // --- FIM DA ADIÇÃO ---
-
     try {
       // 1. Carrega a configuração do Firebase (fornecida pelo ambiente)
       let firebaseConfig = {};
       
-      // Objeto de fallback com as credenciais que você forneceu anteriormente
       const fallbackConfig = {
           apiKey: "AIzaSyDX_HY7J29Ol1lodVhTz_TlUU0JxwO2IMc",
           authDomain: "irrigador-automatizado-web.firebaseapp.com",
-          databaseURL: "https://irrigador-automatizado-web-default-rtdb.firebaseio.com",
+          databaseURL: "https://irrigador-automatizado-web-default-rtdb.firebaseio.com", // RTDB URL
           projectId: "irrigador-automatizado-web",
           storageBucket: "irrigador-automatizado-web.firebasestorage.app",
           messagingSenderId: "598472307466",
           appId: "1:598472307466:web:a8bf0f831e6f9b0d37c0f3",
           measurementId: "G-MFVCJD84YK"
-      };
+        };
 
       // Tenta usar a configuração global do Canvas primeiro
       if (typeof __firebase_config !== 'undefined' && __firebase_config) {
           try {
-              // Tenta parsear se for uma string
               if (typeof __firebase_config === 'string') {
                   firebaseConfig = JSON.parse(__firebase_config);
               } else if (typeof __firebase_config === 'object') {
@@ -64,9 +405,7 @@ export default function App() {
           firebaseConfig = fallbackConfig; // Usa o fallback se a global não existir
       }
 
-      // Garantia final: Se a config (mesmo a global) não tiver os campos essenciais,
-      // mescla com o fallback para garantir que 'databaseURL' e 'projectId' existam.
-      if (!firebaseConfig.projectId || !firebaseConfig.databaseURL) {
+      if (!firebaseConfig.projectId) {
           console.warn("Configuração do Firebase vinda do ambiente está incompleta, mesclando com fallback.");
           firebaseConfig = { ...fallbackConfig, ...firebaseConfig };
       }
@@ -77,11 +416,12 @@ export default function App() {
 
       // 2. Inicializa os serviços do Firebase
       const app = initializeApp(firebaseConfig);
-      const database = getDatabase(app); // Usando Realtime Database
+      // MUDANÇA CRÍTICA: Obtendo o Realtime Database
+      const database = getDatabase(app); 
       const firebaseAuth = getAuth(app);
       
       // 3. Armazena as instâncias no estado do React
-      setDb(database);
+      setDb(database); // 'db' agora é a instância do RTDB
       setAuth(firebaseAuth);
 
       // 4. Função para realizar o login
@@ -95,6 +435,7 @@ export default function App() {
           
           const currentUserId = firebaseAuth.currentUser?.uid || crypto.randomUUID();
           setUserId(currentUserId); // Define o userId no estado
+          console.log("Autenticação concluída. User ID:", currentUserId);
 
         } catch (error) {
           console.error("Erro de autenticação Firebase:", error);
@@ -108,14 +449,6 @@ export default function App() {
       console.error("Erro de inicialização Firebase:", error);
       setLoading(false);
     }
-
-    // Função de limpeza para remover o script quando o componente desmontar
-    return () => {
-        const existingScript = document.querySelector('script[src="https://cdn.tailwindcss.com"]');
-        if (existingScript && document.head.contains(existingScript)) {
-            document.head.removeChild(existingScript);
-        }
-    };
   }, []); // Array vazio, roda apenas uma vez na montagem
 
   // Efeito para buscar e ouvir os dados do Realtime Database
@@ -126,65 +459,117 @@ export default function App() {
     }
 
     setLoading(true);
+    
+    // O CAMINHO CORRETO E PRIVADO para a COLEÇÃO no Realtime Database.
+    // O RTDB não usa a estrutura complexa de /artifacts do Firestore
+    // Path adaptado: /users/{userId}/leiturasSolo
+    const leiturasCollectionPath = `/artifacts/default-app-id/users/default-user-id/leiturasSolo`;
+    
+    // 1. Cria a referência para o RTDB
+    const leiturasRef = ref(db, leiturasCollectionPath);
 
-    // 1. Define a referência para o nó 'leiturasSolo' no RTDB
-    const leiturasCollectionRef = ref(db, 'leiturasSolo');
+    console.log(`[RTDB DIAGONÓSTICO] Tentando ler da coleção PRIVADA: /${leiturasCollectionPath}`);
 
-    // 2. Cria a query para ordenar os dados por 'timestamp'
-    const q = rtdbQuery(leiturasCollectionRef, orderByChild('timestamp'));
+    // 2. Cria a query para ordenar e limitar os dados (RTDB usa orderByChild e limitToLast)
+    // Buscamos os últimos 50 registros, ordenados pelo 'timestamp'
+    const q = dbQuery(
+        leiturasRef,
+        orderByChild('timestamp'), 
+        limitToLast(50) // Limita a 50 leituras para otimizar o desempenho
+    );
 
     // 3. Ouve por mudanças em tempo real com 'onValue'
     const unsubscribe = onValue(q, (snapshot) => {
-      if (!snapshot.exists()) {
-        // Caso não haja dados
-        setUltimaLeitura(null);
-        setLeituras([]);
-        console.warn("Nenhum dado encontrado no caminho 'leiturasSolo'.");
-      } else {
-        // 4. Processa os dados
-        const dataObj = snapshot.val();
-        
-        // Converte o objeto em um array
-        const leiturasArray = Object.keys(dataObj).map(key => ({
-          id: key, // Salva a chave única do RTDB
-          ...dataObj[key]
-        }));
-        
-        // Ordena o array pela 'timestamp' (mais novo primeiro)
-        leiturasArray.sort((a, b) => b.timestamp - a.timestamp);
+      
+      let leiturasArray = [];
 
-        // 5. Pega o dado mais recente
+      if (snapshot.exists()) { // Verifica se o snapshot existe e tem dados
+        // 4. Processa os dados do RTDB (que vêm como um objeto de objetos)
+        const rawData = snapshot.val();
+        
+        // Itera sobre o objeto de dados para criar um array (com o ID/chave como propriedade 'id')
+        for (const id in rawData) {
+            leiturasArray.push({
+                id, // Chave do RTDB
+                ...rawData[id] // Dados da leitura
+            });
+        }
+        
+        // O RTDB com orderByChild e limitToLast traz os dados em ordem crescente de timestamp (mais antigo primeiro).
+        // Invertemos para que o mais novo fique no índice 0 (para o card da Última Leitura).
+        leiturasArray.reverse();
+        
+        console.log("[RTDB DIAGONÓSTICO] Dados Processados (Array ordenado):", leiturasArray);
+        
+        
+        // 5. Processa a última leitura (para os cards)
         const latestData = leiturasArray[0];
+        
+        let timestampBruto = latestData.timestamp;
+        let dataLegivel;
+        
+        // Lógica de formatação para RTDB (assume milissegundos, que é o padrão do ServerValue.TIMESTAMP)
+        if (typeof timestampBruto === 'number') {
+            dataLegivel = new Date(timestampBruto);
+        } else {
+            // Fallback (ex: se for string)
+            dataLegivel = new Date(timestampBruto);
+        }
+
+        const formattedTimestamp = dataLegivel
+            ? dataLegivel.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) 
+            : 'N/A';
 
         // 6. Atualiza o estado da 'Última Leitura' (para os cards)
         setUltimaLeitura({
           ...latestData,
-          timestamp: latestData.timestamp ? new Date(latestData.timestamp).toLocaleString('pt-BR') : 'N/A',
-          umidadeSolo: latestData.umidadedosolo,
+          timestamp: formattedTimestamp,
+          
+          umidadeSolo: latestData.umidade, 
           temperaturaAmbiente: latestData.temperatura,
-          umidadeAr: latestData.umidadeDoAr,
-          estaChovendo: latestData.estaChovendo,
-          valvula: latestData.statusValvula === 'aberta',
-          fluxoAgua: latestData.fluxoAgua,
-          localizacao: latestData.localizacao?.nomeLocal || 'N/A'
+          umidadeAr: latestData.umidadear,
+          // 'sensor de chuva' precisa de um valor, assume-se que está vazio se não estiver a chover
+          estaChovendo: latestData["sensor de chuva"] !== "" && latestData["sensor de chuva"] !== 0, 
+          valvula: latestData.statusValvula === 'aberta', 
+          fluxoAgua: latestData.fluxoAgua, 
+          localizacao: latestData.localizacao?.nomeLocal || 'Não Especificado'
         });
-
+        
         // 7. Atualiza o estado do 'Histórico' (para a tabela e gráficos)
-        const histórico = leiturasArray.map(leitura => ({
-          ...leitura,
-          timestamp: leitura.timestamp ? new Date(leitura.timestamp).toLocaleString('pt-BR') : 'N/A',
-          umidadeSolo: leitura.umidadedosolo,
-          temperaturaAmbiente: leitura.temperatura,
-          umidadeAr: leitura.umidadeDoAr,
-          estaChovendo: leitura.estaChovendo,
-          valvula: leitura.statusValvula === 'aberta'
+        setLeituras(leiturasArray.map(leitura => {
+            
+            let tsBrutoItem = leitura.timestamp;
+            let dataItem = null;
+            
+            if (typeof tsBrutoItem === 'number') {
+                dataItem = new Date(tsBrutoItem);
+            } else {
+                dataItem = new Date(tsBrutoItem);
+            }
+
+            return {
+                ...leitura,
+                umidadeSolo: leitura.umidade,
+                umidadeAr: leitura.umidadear,
+                estaChovendo: leitura["sensor de chuva"] !== "" && leitura["sensor de chuva"] !== 0,
+                temperaturaAmbiente: leitura.temperatura,
+                valvula: leitura.statusValvula === 'aberta',
+                timestampTabela: dataItem ? dataItem.toLocaleString('pt-BR') : 'N/A',
+                timestamp: dataItem 
+                    ? dataItem.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' }) 
+                    : 'N/A',
+            };
         }));
-        setLeituras(histórico);
+      } else {
+        // Caso não haja dados
+        setUltimaLeitura(null);
+        setLeituras([]);
+        console.warn(`[RTDB DIAGONÓSTICO] Nenhum dado encontrado na coleção '${leiturasCollectionPath}'.`);
       }
       setLoading(false); // Marca que o carregamento terminou
     }, (error) => {
       // Callback de erro do onValue
-      console.error("Erro ao ouvir dados do RTDB:", error);
+      console.error("[RTDB DIAGONÓSTICO] Erro ao ouvir dados do Realtime Database:", error);
       setLoading(false);
     });
 
@@ -195,225 +580,250 @@ export default function App() {
 
   // -----------------------------------------------------------------------------------
   // Renderização da Interface do Usuário (UI)
-  // O JSX foi redesenhado para uma aparência mais moderna.
   // -----------------------------------------------------------------------------------
   return (
-    <div className="min-h-screen bg-slate-100 p-6 sm:p-10 font-sans text-slate-900">
-      <div className="max-w-7xl mx-auto">
-        
-        {/* Cabeçalho */}
-        <header className="mb-10">
-          <div className="flex items-center space-x-3 mb-2">
-             <h1 className="text-3xl sm:text-4xl font-bold text-slate-800">
-               Dashboard de Irrigação
-             </h1>
-          </div>
-          <p className="text-lg text-slate-500">
-            Monitoramento em tempo real do seu sistema.
-          </p>
-        </header>
+    <>
+      {/* Injeta os estilos CSS no documento */}
+      <AppStyles />
 
-        {/* Seção de Dados Atuais (Cards) */}
-        <section className="mb-10">
-          <div className="flex items-center space-x-2 mb-5">
-            <h2 className="text-2xl font-semibold text-slate-700">
-              Dados Atuais
-            </h2>
-          </div>
+      <div className="app-container">
+        <div className="main-content">
           
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-5 gap-5">
-            {loading && (
-              <p className="col-span-full text-center text-lg text-slate-400 animate-pulse">
-                Carregando dados...
-              </p>
-            )}
-
-            {!loading && !ultimaLeitura && (
-              <p className="col-span-full text-center text-lg text-slate-400">
-                Nenhum dado encontrado. Verifique o caminho no RTDB ('leiturasSolo').
-              </p>
-            )}
-
-            {/* Renderiza os cards se a última leitura existir */}
+          {/* Cabeçalho */}
+          <header className="header">
+            <div className="header-title-container">
+                <h1 className="header-title">
+                  Dashboard de Irrigação
+                </h1>
+            </div>
+            <p className="header-subtitle">
+              Monitoramento em tempo real do seu sistema.
+            </p>
+            
+            {/* Informações de Localização e Última Atualização */}
             {ultimaLeitura && (
-              <>
-                {/* Card: Umidade do Solo */}
-                <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Umidade do Solo
-                  </h3>
-                  <p className="text-3xl font-bold text-green-700">
-                    {ultimaLeitura.umidadeSolo?.toFixed(1) || 'N/A'}%
-                  </p>
-                </div>
-
-                {/* Card: Temperatura Ambiente */}
-                <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Temperatura
-                  </h3>
-                  <p className="text-3xl font-bold text-red-700">
-                    {ultimaLeitura.temperaturaAmbiente?.toFixed(1) || 'N/A'}°C
-                  </p>
-                </div>
-
-                {/* Card: Umidade do Ar */}
-                <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Umidade do Ar
-                  </h3>
-                  <p className="text-3xl font-bold text-sky-700">
-                    {ultimaLeitura.umidadeAr?.toFixed(1) || 'N/A'}%
-                  </p>
-                </div>
-                
-                {/* Card: Status da Chuva */}
-                <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Chuva
-                  </h3>
-                  <p className="text-3xl font-bold text-indigo-700">
-                    {ultimaLeitura.estaChovendo ? 'Chovendo' : 'Sem chuva'}
-                  </p>
-                </div>
-
-                {/* Card: Status da Válvula */}
-                <div className="bg-white rounded-xl shadow-lg p-5 border border-slate-200 hover:shadow-md transition-shadow duration-300">
-                  <h3 className="text-sm font-medium text-slate-500 uppercase tracking-wide mb-2">
-                    Válvula
-                  </h3>
-                  <p className={`text-3xl font-bold ${ultimaLeitura.valvula ? 'text-blue-600' : 'text-slate-700'}`}>
-                    {ultimaLeitura.valvula ? 'Aberta' : 'Fechada'}
-                  </p>
-                </div>
-              </>
+              <div className="header-info">
+                <p>
+                  <span className="info-label">Localização:</span> {ultimaLeitura.localizacao}
+                </p>
+                <p>
+                  <span className="info-label">Última Atualização:</span> {ultimaLeitura.timestamp}
+                </p>
+                {userId && (
+                    <p className="user-id-info">
+                      (Usuário ID: {userId})
+                    </p>
+                )}
+              </div>
             )}
-          </div>
-        </section>
+          </header>
 
-        {/* Layout Principal: Gráficos e Histórico Lado a Lado */}
-        <section className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-          
-          {/* Coluna dos Gráficos */}
-          <div className="lg:col-span-2">
-            <div className="bg-white rounded-xl shadow-lg p-6 border border-slate-200">
-              <h2 className="text-2xl font-semibold text-slate-700 mb-6">
-                Gráficos das Leituras
+          {/* Seção de Dados Atuais (Cards) */}
+          <section className="current-data-section">
+            <div className="section-header">
+              <h2 className="section-title">
+                Dados Atuais
               </h2>
-              {leituras.length > 0 ? (
-                <>
-                  {/* Gráfico 1: Umidades */}
-                  <h4 className="text-lg font-semibold text-slate-600 mb-3">
-                    Umidade (%)
-                  </h4>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis dataKey="timestamp" fontSize={12} />
-                      <YAxis domain={[0, 100]} fontSize={12} />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="umidadeSolo" stroke="#10B981" name="Umidade do Solo" strokeWidth={2} dot={false} />
-                      <Line type="monotone" dataKey="umidadeAr" stroke="#3B82F6" name="Umidade do Ar" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-
-                  {/* Gráfico 2: Temperatura */}
-                  <h4 className="text-lg font-semibold text-slate-600 mb-3 mt-8">
-                    Temperatura (°C)
-                  </h4>
-                  <ResponsiveContainer width="100%" height={300}>
-                    <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
-                      <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
-                      <XAxis dataKey="timestamp" fontSize={12} />
-                      <YAxis fontSize={12} />
-                      <Tooltip />
-                      <Legend />
-                      <Line type="monotone" dataKey="temperaturaAmbiente" stroke="#EF4444" name="Temperatura" strokeWidth={2} dot={false} />
-                    </LineChart>
-                  </ResponsiveContainer>
-                </>
-              ) : (
-                // Mensagem se não houver dados para os gráficos
-                !loading && <p className="text-center text-slate-400 py-10">
-                  Nenhum dado disponível para gerar gráficos.
+            </div>
+            
+            <div className="cards-grid">
+              {loading && (
+                <p className="loading-message">
+                  Carregando dados...
                 </p>
               )}
-              {loading && <p className="text-center text-slate-400 py-10 animate-pulse">Carregando gráficos...</p>}
-            </div>
-          </div>
 
-          {/* Coluna do Histórico (Tabela) */}
-          <div className="lg:col-span-1">
-            <div className="bg-white rounded-xl shadow-lg border border-slate-200 h-full flex flex-col">
-              <div className="flex items-center space-x-3 p-6 border-b border-slate-200">
-                 <h2 className="text-2xl font-semibold text-slate-700">
-                   Histórico
-                 </h2>
-              </div>
-              
-              {/* Container rolável para a tabela */}
-              <div className="overflow-y-auto flex-1" style={{ maxHeight: '720px' }}>
+              {!loading && !ultimaLeitura && (
+                <p className="error-message">
+                  Nenhum dado encontrado. Verifique se os dados existem em seu caminho privado do **Realtime Database** (`/users/{userId}/leiturasSolo`).
+                </p>
+              )}
+
+              {/* Renderiza os cards se a última leitura existir */}
+              {ultimaLeitura && (
+                <>
+                  {/* Card: Umidade do Solo */}
+                  <div className="card">
+                    <h3 className="card-title">
+                      Umidade do Solo
+                    </h3>
+                    <p className="card-value green">
+                      {ultimaLeitura.umidadeSolo?.toFixed(1) || 'N/A'}%
+                    </p>
+                  </div>
+
+                  {/* Card: Temperatura Ambiente */}
+                  <div className="card">
+                    <h3 className="card-title">
+                      Temperatura
+                    </h3>
+                    <p className="card-value red">
+                      {ultimaLeitura.temperaturaAmbiente?.toFixed(1) || 'N/A'}°C
+                    </p>
+                  </div>
+
+                  {/* Card: Umidade do Ar */}
+                  <div className="card">
+                    <h3 className="card-title">
+                      Umidade do Ar
+                    </h3>
+                    <p className="card-value sky">
+                      {ultimaLeitura.umidadear?.toFixed(1) || 'N/A'}%
+                    </p>
+                  </div>
+                  
+                  {/* Card: Status da Chuva */}
+                  <div className="card">
+                    <h3 className="card-title">
+                      Chuva
+                    </h3>
+                    <p className="card-value indigo">
+                      {ultimaLeitura.estaChovendo ? 'Chovendo' : 'Sem chuva'}
+                    </p>
+                  </div>
+
+                  {/* Card: Status da Válvula */}
+                  <div className="card">
+                    <h3 className="card-title">
+                      Válvula
+                    </h3>
+                    <p className={`card-value ${ultimaLeitura.valvula ? 'blue' : 'slate'}`}>
+                      {ultimaLeitura.valvula ? 'Aberta' : 'Fechada'}
+                    </p>
+                    <p className="card-subtitle">
+                      {ultimaLeitura.fluxoAgua ? `Fluxo: ${ultimaLeitura.fluxoAgua?.toFixed(2)} L/min` : 'Fluxo: N/A'}
+                    </p>
+                  </div>
+                </>
+              )}
+            </div>
+          </section>
+
+          {/* Layout Principal: Gráficos e Histórico Lado a Lado */}
+          <section className="main-layout">
+            
+            {/* Coluna dos Gráficos */}
+            <div className="charts-column">
+              <div className="chart-container">
+                <h2 className="chart-title">
+                  Gráficos das Leituras 
+                </h2>
                 {leituras.length > 0 ? (
-                  <table className="min-w-full divide-y divide-slate-200">
-                    <thead className="bg-slate-50 sticky top-0 z-10">
-                      <tr>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Timestamp
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Solo (%)
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Ar (%)
-                        </th>
-                        <th className="px-4 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
-                          Válvula
-                        </th>
-                      </tr>
-                    </thead>
-                    <tbody className="bg-white divide-y divide-slate-200">
-                      {leituras.map((leitura, index) => (
-                        <tr key={leitura.id} className="hover:bg-slate-50 transition-colors">
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-700">
-                            {leitura.timestamp}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-700 font-medium">
-                            {leitura.umidadeSolo?.toFixed(1) || 'N/A'}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm text-slate-700">
-                            {leitura.umidadeAr?.toFixed(1) || 'N/A'}
-                          </td>
-                          <td className="px-4 py-4 whitespace-nowrap text-sm">
-                            {leitura.valvula ? (
-                              <span className="font-medium text-blue-600">Aberta</span>
-                            ) : (
-                              <span className="text-slate-600">Fechada</span>
-                            )}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
+                  <>
+                    {/* Gráfico 1: Umidades */}
+                    <h4 className="chart-subtitle">
+                      Umidade (%)
+                    </h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                      {/* Inverte o array para que os dados mais antigos fiquem à esquerda no gráfico (cronologicamente correto) */}
+                      <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis dataKey="timestamp" fontSize={12} />
+                        <YAxis domain={[0, 100]} fontSize={12} />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="umidadeSolo" stroke="#10B981" name="Umidade do Solo" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="umidadear" stroke="#3B82F6" name="Umidade do Ar" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+
+                    {/* Gráfico 2: Temperatura */}
+                    <h4 className="chart-subtitle second">
+                      Temperatura (°C)
+                    </h4>
+                    <ResponsiveContainer width="100%" height={300}>
+                      {/* Inverte o array para que os dados mais antigos fiquem à esquerda no gráfico */}
+                      <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
+                        <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
+                        <XAxis dataKey="timestamp" fontSize={12} />
+                        <YAxis fontSize={12} />
+                        <Tooltip />
+                        <Legend />
+                        <Line type="monotone" dataKey="temperaturaAmbiente" stroke="#EF4444" name="Temperatura" strokeWidth={2} dot={false} />
+                      </LineChart>
+                    </ResponsiveContainer>
+                  </>
                 ) : (
-                  // Mensagem se não houver dados para a tabela
-                  !loading && <p className="text-center text-slate-400 p-10">
-                    Nenhum histórico de leituras disponível.
+                  // Mensagem se não houver dados para os gráficos
+                  !loading && <p className="table-message">
+                    Nenhum dado disponível para gerar gráficos.
                   </p>
                 )}
-                {loading && <p className="text-center text-slate-400 p-10 animate-pulse">Carregando histórico...</p>}
+                {loading && <p className="loading-message" style={{padding: 0}}>Carregando gráficos...</p>}
               </div>
             </div>
-          </div>
-        </section>
 
-        {/* Rodapé */}
-        <footer className="text-center mt-10 text-slate-400 text-sm">
-          Desenvolvido com React e Firebase.
-        </footer>
+            {/* Coluna do Histórico (Tabela) */}
+            <div className="history-column">
+              <div className="history-container">
+                <div className="history-header">
+                    <h2 className="section-title">
+                      Histórico
+                    </h2>
+                </div>
+                
+                {/* Container rolável para a tabela */}
+                <div className="history-table-container">
+                  {leituras.length > 0 ? (
+                    <table className="history-table">
+                      <thead>
+                        <tr>
+                          <th>
+                            Timestamp
+                          </th>
+                          <th>
+                            Solo (%)
+                          </th>
+                          <th>
+                            Ar (%)
+                          </th>
+                          <th>
+                            Válvula
+                          </th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {/* O array 'leituras' já está em ordem de mais novo para mais antigo (ótimo para a tabela) */}
+                        {leituras.map((leitura, index) => (
+                          <tr key={leitura.id || index}>
+                            <td>
+                              {leitura.timestampTabela} {/* Data e hora completa */}
+                            </td>
+                            <td className="font-medium">
+                              {leitura.umidadeSolo?.toFixed(1) || 'N/A'}
+                            </td>
+                            <td>
+                              {leitura.umidadear?.toFixed(1) || 'N/A'}
+                            </td>
+                            <td>
+                              {leitura.valvula ? (
+                                <span className="status-open">Aberta</span>
+                              ) : (
+                                <span className="status-closed">Fechada</span>
+                              )}
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  ) : (
+                    // Mensagem se não houver dados para a tabela
+                    !loading && <p className="table-message">
+                      Nenhum histórico de leituras disponível.
+                    </p>
+                  )}
+                  {loading && <p className="loading-message" style={{padding: 0}}>Carregando histórico...</p>}
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Rodapé */}
+          <footer className="footer">
+            Desenvolvido com React e Firebase.
+          </footer>
+        </div>
       </div>
-    </div>
+    </>
   );
 }
-
-
