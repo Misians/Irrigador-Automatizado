@@ -7,7 +7,7 @@ import { getAuth, signInAnonymously, signInWithCustomToken } from 'firebase/auth
 import { 
   getDatabase, 
   ref, 
-  query as dbQuery, // Renomeado para evitar conflito com 'query' global, mas será substituído por 'dbQuery'
+  query as dbQuery, 
   orderByChild, 
   limitToLast, 
   onValue,
@@ -91,6 +91,7 @@ const AppStyles = () => (
       font-size: 0.75rem; /* text-xs */
       color: #94a3b8; /* text-slate-400 */
       align-self: center; /* self-center */
+      margin-left: auto; /* Empurra para a direita */
     }
 
     /* Seções */
@@ -360,55 +361,60 @@ const AppStyles = () => (
 
 // Componente principal da página do Dashboard
 export default function App() {
-  // Estado da aplicação
+  // Configuração padrão de fallback 
+  const fallbackConfig = {
+      apiKey: "AIzaSyDX_HY7J29Ol1lodVhTz_TlUU0JxwO2IMc",
+      authDomain: "irrigador-automatizado-web.firebaseapp.com",
+      databaseURL: "https://irrigador-automatizado-web-default-rtdb.firebaseio.com", 
+      projectId: "irrigador-automatizado-web",
+      storageBucket: "irrigador-automatizado-web.firebasestorage.app",
+      messagingSenderId: "598472307466",
+      appId: "1:598472307466:web:a8bf0f831e6f9b0d37c0f3",
+      measurementId: "G-MFVCJD84YK"
+  };
+
+  // Constantes para o caminho de busca fixo
+  const FIXED_USER_ID = 'default-user-id';
+  
+  // Variáveis de estado
   const [loading, setLoading] = useState(true);
   const [ultimaLeitura, setUltimaLeitura] = useState(null);
-  const [leituras, setLeituras] = useState([]); // Array para gráficos e histórico
+  const [leituras, setLeituras] = useState([]); 
 
   // Variáveis de estado do Firebase
-  const [db, setDb] = useState(null); // 'db' agora será a instância do Realtime Database
+  const [db, setDb] = useState(null); 
   const [auth, setAuth] = useState(null);
-  const [userId, setUserId] = useState(null);
+  const [currentAppId, setCurrentAppId] = useState(null);
+  const [currentAuthUserId, setCurrentAuthUserId] = useState(null); // Mantido apenas para fins de exibição
 
   // Efeito para inicializar o Firebase e autenticar o usuário
   useEffect(() => {
     
     try {
-      // 1. Carrega a configuração do Firebase (fornecida pelo ambiente)
+      // 1. Carrega a configuração do Firebase
       let firebaseConfig = {};
       
-      const fallbackConfig = {
-          apiKey: "AIzaSyDX_HY7J29Ol1lodVhTz_TlUU0JxwO2IMc",
-          authDomain: "irrigador-automatizado-web.firebaseapp.com",
-          databaseURL: "https://irrigador-automatizado-web-default-rtdb.firebaseio.com", // RTDB URL
-          projectId: "irrigador-automatizado-web",
-          storageBucket: "irrigador-automatizado-web.firebasestorage.app",
-          messagingSenderId: "598472307466",
-          appId: "1:598472307466:web:a8bf0f831e6f9b0d37c0f3",
-          measurementId: "G-MFVCJD84YK"
-        };
-
-      // Tenta usar a configuração global do Canvas primeiro
       if (typeof __firebase_config !== 'undefined' && __firebase_config) {
           try {
               if (typeof __firebase_config === 'string') {
                   firebaseConfig = JSON.parse(__firebase_config);
               } else if (typeof __firebase_config === 'object') {
-                  firebaseConfig = __firebase_config; // Já é um objeto
+                  firebaseConfig = __firebase_config;
               }
           } catch (e) {
-              console.warn("Falha ao parsear __firebase_config, usando fallback.", e);
-              firebaseConfig = fallbackConfig; // Usa o fallback se o parse falhar
+              firebaseConfig = fallbackConfig;
           }
       } else {
-          console.warn("__firebase_config não definido, usando fallback.");
-          firebaseConfig = fallbackConfig; // Usa o fallback se a global não existir
+          firebaseConfig = fallbackConfig;
       }
 
       if (!firebaseConfig.projectId) {
-          console.warn("Configuração do Firebase vinda do ambiente está incompleta, mesclando com fallback.");
           firebaseConfig = { ...fallbackConfig, ...firebaseConfig };
       }
+      
+      // Define o App ID
+      const initialAppId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+      setCurrentAppId(initialAppId);
       
       const initialAuthToken = typeof __initial_auth_token !== 'undefined' 
         ? __initial_auth_token 
@@ -416,26 +422,26 @@ export default function App() {
 
       // 2. Inicializa os serviços do Firebase
       const app = initializeApp(firebaseConfig);
-      // MUDANÇA CRÍTICA: Obtendo o Realtime Database
       const database = getDatabase(app); 
       const firebaseAuth = getAuth(app);
       
-      // 3. Armazena as instâncias no estado do React
-      setDb(database); // 'db' agora é a instância do RTDB
+      setDb(database);
       setAuth(firebaseAuth);
 
-      // 4. Função para realizar o login
+      // 3. Função para realizar o login
       const signIn = async () => {
         try {
+          // A autenticação é sempre necessária para as regras de segurança do Canvas,
+          // mas o ID real autenticado não será usado para buscar os dados.
           if (initialAuthToken) {
             await signInWithCustomToken(firebaseAuth, initialAuthToken);
           } else {
-            await signInAnonymously(firebaseAuth); // Fallback para dev local
+            await signInAnonymously(firebaseAuth);
           }
           
-          const currentUserId = firebaseAuth.currentUser?.uid || crypto.randomUUID();
-          setUserId(currentUserId); // Define o userId no estado
-          console.log("Autenticação concluída. User ID:", currentUserId);
+          const uid = firebaseAuth.currentUser?.uid || 'N/A';
+          setCurrentAuthUserId(uid); // Apenas para exibição no rodapé/header
+          console.log("Autenticação concluída. User ID (Autenticado):", uid);
 
         } catch (error) {
           console.error("Erro de autenticação Firebase:", error);
@@ -449,33 +455,31 @@ export default function App() {
       console.error("Erro de inicialização Firebase:", error);
       setLoading(false);
     }
-  }, []); // Array vazio, roda apenas uma vez na montagem
+  }, []); 
 
   // Efeito para buscar e ouvir os dados do Realtime Database
   useEffect(() => {
-    // Só executa se o Firebase (db, auth) e o usuário (userId) estiverem prontos
-    if (!db || !auth || !userId) {
-      return; // Ainda não está pronto
+    // Só executa se o Firebase (db, auth) e o appId estiverem prontos
+    if (!db || !auth || !currentAppId) {
+      return; 
     }
 
     setLoading(true);
     
-    // O CAMINHO CORRETO E PRIVADO para a COLEÇÃO no Realtime Database.
-    // O RTDB não usa a estrutura complexa de /artifacts do Firestore
-    // Path adaptado: /users/{userId}/leiturasSolo
-    const leiturasCollectionPath = `/artifacts/default-app-id/users/default-user-id/leiturasSolo`;
+    // CAMINHO FIXO: /artifacts/{currentAppId}/users/default-user-id/leiturasSolo
+    const leiturasCollectionPath = `/artifacts/${currentAppId}/users/${FIXED_USER_ID}/leiturasSolo`;
     
     // 1. Cria a referência para o RTDB
     const leiturasRef = ref(db, leiturasCollectionPath);
 
-    console.log(`[RTDB DIAGONÓSTICO] Tentando ler da coleção PRIVADA: /${leiturasCollectionPath}`);
+    console.log(`[RTDB DIAGONÓSTICO] Tentando ler da coleção FIXA: /${leiturasCollectionPath}`);
 
-    // 2. Cria a query para ordenar e limitar os dados (RTDB usa orderByChild e limitToLast)
-    // Buscamos os últimos 50 registros, ordenados pelo 'timestamp'
+    // 2. Cria a query para ordenar e limitar os dados
+    const LIMITE_LEITURAS = 15;
     const q = dbQuery(
         leiturasRef,
         orderByChild('timestamp'), 
-        limitToLast(50) // Limita a 50 leituras para otimizar o desempenho
+        limitToLast(LIMITE_LEITURAS) 
     );
 
     // 3. Ouve por mudanças em tempo real com 'onValue'
@@ -483,75 +487,56 @@ export default function App() {
       
       let leiturasArray = [];
 
-      if (snapshot.exists()) { // Verifica se o snapshot existe e tem dados
-        // 4. Processa os dados do RTDB (que vêm como um objeto de objetos)
+      if (snapshot.exists()) {
         const rawData = snapshot.val();
         
-        // Itera sobre o objeto de dados para criar um array (com o ID/chave como propriedade 'id')
         for (const id in rawData) {
             leiturasArray.push({
-                id, // Chave do RTDB
-                ...rawData[id] // Dados da leitura
+                id, 
+                ...rawData[id] 
             });
         }
         
-        // O RTDB com orderByChild e limitToLast traz os dados em ordem crescente de timestamp (mais antigo primeiro).
-        // Invertemos para que o mais novo fique no índice 0 (para o card da Última Leitura).
+        // Invertemos o array (que está ordenado do mais antigo para o mais novo pelo RTDB)
+        // para que o mais novo fique no índice 0 (para o card da Última Leitura)
         leiturasArray.reverse();
         
-        console.log("[RTDB DIAGONÓSTICO] Dados Processados (Array ordenado):", leiturasArray);
-        
-        
-        // 5. Processa a última leitura (para os cards)
+        // 4. Processa a última leitura (para os cards)
         const latestData = leiturasArray[0];
         
-        let timestampBruto = latestData.timestamp;
-        let dataLegivel;
+        let dataLegivel = new Date(latestData.timestamp);
         
-        // Lógica de formatação para RTDB (assume milissegundos, que é o padrão do ServerValue.TIMESTAMP)
-        if (typeof timestampBruto === 'number') {
-            dataLegivel = new Date(timestampBruto);
-        } else {
-            // Fallback (ex: se for string)
-            dataLegivel = new Date(timestampBruto);
-        }
-
         const formattedTimestamp = dataLegivel
             ? dataLegivel.toLocaleString('pt-BR', { dateStyle: 'short', timeStyle: 'medium' }) 
             : 'N/A';
 
-        // 6. Atualiza o estado da 'Última Leitura' (para os cards)
+        // 5. Atualiza o estado da 'Última Leitura' (para os cards)
         setUltimaLeitura({
           ...latestData,
           timestamp: formattedTimestamp,
           
-          umidadeSolo: latestData.umidade, 
+          // CORREÇÃO: Mapeando para as chaves exatas do seu banco de dados
+          umidadeSolo: latestData.umidadedosolo, 
           temperaturaAmbiente: latestData.temperatura,
-          umidadeAr: latestData.umidadear,
-          // 'sensor de chuva' precisa de um valor, assume-se que está vazio se não estiver a chover
-          estaChovendo: latestData["sensor de chuva"] !== "" && latestData["sensor de chuva"] !== 0, 
+          umidadeAr: latestData.umidadeDoAr,
+          
+          estaChovendo: latestData.estaChovendo, // A chave estava correta, apenas incluída para clareza
           valvula: latestData.statusValvula === 'aberta', 
           fluxoAgua: latestData.fluxoAgua, 
           localizacao: latestData.localizacao?.nomeLocal || 'Não Especificado'
         });
         
-        // 7. Atualiza o estado do 'Histórico' (para a tabela e gráficos)
+        // 6. Atualiza o estado do 'Histórico' (para a tabela e gráficos)
         setLeituras(leiturasArray.map(leitura => {
             
-            let tsBrutoItem = leitura.timestamp;
-            let dataItem = null;
-            
-            if (typeof tsBrutoItem === 'number') {
-                dataItem = new Date(tsBrutoItem);
-            } else {
-                dataItem = new Date(tsBrutoItem);
-            }
+            let dataItem = new Date(leitura.timestamp);
 
             return {
                 ...leitura,
-                umidadeSolo: leitura.umidade,
-                umidadeAr: leitura.umidadear,
-                estaChovendo: leitura["sensor de chuva"] !== "" && leitura["sensor de chuva"] !== 0,
+                // CORREÇÃO: Mapeando para as chaves exatas do seu banco de dados
+                umidadeSolo: leitura.umidadedosolo,
+                umidadeAr: leitura.umidadeDoAr,
+                
                 temperaturaAmbiente: leitura.temperatura,
                 valvula: leitura.statusValvula === 'aberta',
                 timestampTabela: dataItem ? dataItem.toLocaleString('pt-BR') : 'N/A',
@@ -561,35 +546,30 @@ export default function App() {
             };
         }));
       } else {
-        // Caso não haja dados
         setUltimaLeitura(null);
         setLeituras([]);
-        console.warn(`[RTDB DIAGONÓSTICO] Nenhum dado encontrado na coleção '${leiturasCollectionPath}'.`);
       }
-      setLoading(false); // Marca que o carregamento terminou
+      setLoading(false); 
     }, (error) => {
-      // Callback de erro do onValue
       console.error("[RTDB DIAGONÓSTICO] Erro ao ouvir dados do Realtime Database:", error);
       setLoading(false);
     });
 
-    // 8. Função de limpeza: para de ouvir quando o componente desmontar
     return () => unsubscribe();
     
-  }, [db, auth, userId]); // Dependências: re-executa se db, auth ou userId mudarem
+  }, [db, auth, currentAppId]); 
+
 
   // -----------------------------------------------------------------------------------
   // Renderização da Interface do Usuário (UI)
   // -----------------------------------------------------------------------------------
   return (
     <>
-      {/* Injeta os estilos CSS no documento */}
       <AppStyles />
 
       <div className="app-container">
         <div className="main-content">
           
-          {/* Cabeçalho */}
           <header className="header">
             <div className="header-title-container">
                 <h1 className="header-title">
@@ -600,25 +580,32 @@ export default function App() {
               Monitoramento em tempo real do seu sistema.
             </p>
             
-            {/* Informações de Localização e Última Atualização */}
-            {ultimaLeitura && (
-              <div className="header-info">
+            <div className="header-info">
+              {ultimaLeitura ? (
+                <>
+                  <p>
+                    <span className="info-label">Localização:</span> {ultimaLeitura.localizacao}
+                  </p>
+                  <p>
+                    <span className="info-label">Última Atualização:</span> {ultimaLeitura.timestamp}
+                  </p>
+                </>
+              ) : (
                 <p>
-                  <span className="info-label">Localização:</span> {ultimaLeitura.localizacao}
+                  <span className="info-label">Status:</span> Aguardando dados no caminho fixo.
                 </p>
-                <p>
-                  <span className="info-label">Última Atualização:</span> {ultimaLeitura.timestamp}
-                </p>
-                {userId && (
-                    <p className="user-id-info">
-                      (Usuário ID: {userId})
+              )}
+              {currentAuthUserId && (
+                    <p className="user-id-info" style={{marginLeft: 'auto'}}>
+                      (Usuário Autenticado: {currentAuthUserId})
                     </p>
-                )}
-              </div>
-            )}
+              )}
+              <p className="user-id-info" style={{marginTop: '0.25rem', width: '100%', textAlign: 'right'}}>
+                (Buscando no ID Fixo: {FIXED_USER_ID})
+              </p>
+            </div>
           </header>
 
-          {/* Seção de Dados Atuais (Cards) */}
           <section className="current-data-section">
             <div className="section-header">
               <h2 className="section-title">
@@ -635,11 +622,10 @@ export default function App() {
 
               {!loading && !ultimaLeitura && (
                 <p className="error-message">
-                  Nenhum dado encontrado. Verifique se os dados existem em seu caminho privado do **Realtime Database** (`/users/{userId}/leiturasSolo`).
+                  Nenhum dado encontrado no caminho fixo. Verifique se seu dispositivo está enviando dados para o ID **{FIXED_USER_ID}**.
                 </p>
               )}
 
-              {/* Renderiza os cards se a última leitura existir */}
               {ultimaLeitura && (
                 <>
                   {/* Card: Umidade do Solo */}
@@ -668,7 +654,7 @@ export default function App() {
                       Umidade do Ar
                     </h3>
                     <p className="card-value sky">
-                      {ultimaLeitura.umidadear?.toFixed(1) || 'N/A'}%
+                      {ultimaLeitura.umidadeAr?.toFixed(1) || 'N/A'}%
                     </p>
                   </div>
                   
@@ -699,14 +685,12 @@ export default function App() {
             </div>
           </section>
 
-          {/* Layout Principal: Gráficos e Histórico Lado a Lado */}
           <section className="main-layout">
             
-            {/* Coluna dos Gráficos */}
             <div className="charts-column">
               <div className="chart-container">
                 <h2 className="chart-title">
-                  Gráficos das Leituras 
+                  Gráficos das Últimas 15 Leituras
                 </h2>
                 {leituras.length > 0 ? (
                   <>
@@ -715,7 +699,7 @@ export default function App() {
                       Umidade (%)
                     </h4>
                     <ResponsiveContainer width="100%" height={300}>
-                      {/* Inverte o array para que os dados mais antigos fiquem à esquerda no gráfico (cronologicamente correto) */}
+                      {/* Invertemos o array aqui para que o tempo vá da esquerda (mais antigo) para a direita (mais novo) */}
                       <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="timestamp" fontSize={12} />
@@ -723,7 +707,7 @@ export default function App() {
                         <Tooltip />
                         <Legend />
                         <Line type="monotone" dataKey="umidadeSolo" stroke="#10B981" name="Umidade do Solo" strokeWidth={2} dot={false} />
-                        <Line type="monotone" dataKey="umidadear" stroke="#3B82F6" name="Umidade do Ar" strokeWidth={2} dot={false} />
+                        <Line type="monotone" dataKey="umidadeAr" stroke="#3B82F6" name="Umidade do Ar" strokeWidth={2} dot={false} />
                       </LineChart>
                     </ResponsiveContainer>
 
@@ -732,7 +716,7 @@ export default function App() {
                       Temperatura (°C)
                     </h4>
                     <ResponsiveContainer width="100%" height={300}>
-                      {/* Inverte o array para que os dados mais antigos fiquem à esquerda no gráfico */}
+                      {/* Invertemos o array aqui para que o tempo vá da esquerda (mais antigo) para a direita (mais novo) */}
                       <LineChart data={[...leituras].reverse()} margin={{ top: 5, right: 20, left: -10, bottom: 5 }}>
                         <CartesianGrid strokeDasharray="3 3" stroke="#e0e0e0" />
                         <XAxis dataKey="timestamp" fontSize={12} />
@@ -753,7 +737,6 @@ export default function App() {
               </div>
             </div>
 
-            {/* Coluna do Histórico (Tabela) */}
             <div className="history-column">
               <div className="history-container">
                 <div className="history-header">
@@ -762,7 +745,6 @@ export default function App() {
                     </h2>
                 </div>
                 
-                {/* Container rolável para a tabela */}
                 <div className="history-table-container">
                   {leituras.length > 0 ? (
                     <table className="history-table">
@@ -783,17 +765,17 @@ export default function App() {
                         </tr>
                       </thead>
                       <tbody>
-                        {/* O array 'leituras' já está em ordem de mais novo para mais antigo (ótimo para a tabela) */}
+                        {/* A tabela mostra do mais novo para o mais antigo (do jeito que está no array 'leituras') */}
                         {leituras.map((leitura, index) => (
                           <tr key={leitura.id || index}>
                             <td>
-                              {leitura.timestampTabela} {/* Data e hora completa */}
+                              {leitura.timestampTabela}
                             </td>
                             <td className="font-medium">
                               {leitura.umidadeSolo?.toFixed(1) || 'N/A'}
                             </td>
                             <td>
-                              {leitura.umidadear?.toFixed(1) || 'N/A'}
+                              {leitura.umidadeAr?.toFixed(1) || 'N/A'}
                             </td>
                             <td>
                               {leitura.valvula ? (
@@ -807,7 +789,6 @@ export default function App() {
                       </tbody>
                     </table>
                   ) : (
-                    // Mensagem se não houver dados para a tabela
                     !loading && <p className="table-message">
                       Nenhum histórico de leituras disponível.
                     </p>
@@ -818,7 +799,6 @@ export default function App() {
             </div>
           </section>
 
-          {/* Rodapé */}
           <footer className="footer">
             Desenvolvido com React e Firebase.
           </footer>
