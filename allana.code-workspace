@@ -1,15 +1,16 @@
 {
 	"folders": [
 		{
+			"name": "IRRIGADOR",
+			"path": "../../OneDrive/Documentos/PlatformIO/Projects/IRRIGADOR"
+		},
+		{
+			"name": "allana",
 			"path": ".."
 		},
 		{
 			"name": "Platifomio",
 			"path": "../../OneDrive/Documentos/PlatformIO/Projects/Platifomio"
-		},
-		{
-			"name": "IRRIGADOR",
-			"path": "../../OneDrive/Documentos/PlatformIO/Projects/IRRIGADOR"
 		}
 	],
 	"settings": {}
